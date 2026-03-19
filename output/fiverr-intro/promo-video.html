@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fiverr Promo Video</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap');
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  background: #000;
+  overflow: hidden;
+  font-family: 'Inter', sans-serif;
+}
+
+#canvas {
+  width: 1920px;
+  height: 1080px;
+  transform: scale(0.5625);
+  transform-origin: top left;
+}
+
+.loader {
+  position: fixed;
+  top: 20px;
+  left: 20px;
+  color: #666;
+  font-size: 14px;
+}
+</style>
+</head>
+<body>
+<div class="loader" id="loader">Loading...</div>
+<canvas id="canvas" width="1920" height="1080"></canvas>
+
+<script>
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+const W = 1920;
+const H = 1080;
+
+const COLORS = {
+  bg: '#0a0a0f',
+  bgLight: '#12121a',
+  primary: '#6366f1',
+  accent: '#818cf8',
+  white: '#ffffff',
+  gray: '#9ca3af',
+  grayDark: '#4b5563',
+  gold: '#fbbf24'
+};
+
+let frame = 0;
+const FPS = 30;
+
+// Easing functions
+const easeOutCubic = t => 1 - Math.pow(1 - t, 3);
+const easeInOutCubic = t => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+const easeOutBack = t => 1 + 2.70158 * Math.pow(t - 1, 3) + 1.70158 * Math.pow(t - 1, 2);
+
+// Helper: draw text with shadow
+function drawText(text, x, y, opts = {}) {
+  const { size = 48, color = COLORS.white, align = 'center', alpha = 1, shadow = true } = opts;
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.font = `bold ${size}px Inter`;
+  ctx.textAlign = align;
+  ctx.textBaseline = 'middle';
+  if (shadow) {
+    ctx.shadowColor = 'rgba(0,0,0,0.5)';
+    ctx.shadowBlur = 20;
+    ctx.shadowOffsetY = 5;
+  }
+  ctx.fillStyle = color;
+  ctx.fillText(text, x, y);
+  ctx.restore();
+}
+
+// Helper: draw rounded rect
+function drawRoundedRect(x, y, w, h, r, fill, stroke) {
+  ctx.beginPath();
+  ctx.roundRect(x, y, w, h, r);
+  if (fill) { ctx.fillStyle = fill; ctx.fill(); }
+  if (stroke) { ctx.strokeStyle = stroke; ctx.stroke(); }
+}
+
+// Helper: draw icon (simple shapes)
+function drawIcon(type, x, y, size, color) {
+  ctx.save();
+  ctx.fillStyle = color;
+  const s = size;
+  
+  if (type === 'bot') {
+    // Robot icon
+    ctx.beginPath();
+    ctx.arc(x, y - s*0.2, s*0.35, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillRect(x - s*0.3, y, s*0.6, s*0.5);
+    ctx.fillStyle = COLORS.bg;
+    ctx.beginPath();
+    ctx.arc(x - s*0.12, y - s*0.15, s*0.08, 0, Math.PI * 2);
+    ctx.arc(x + s*0.12, y - s*0.15, s*0.08, 0, Math.PI * 2);
+    ctx.fill();
+  } else if (type === 'discord') {
+    // Discord-like
+    ctx.beginPath();
+    ctx.moveTo(x - s*0.4, y - s*0.25);
+    ctx.lineTo(x - s*0.25, y - s*0.4);
+    ctx.lineTo(x + s*0.25, y - s*0.4);
+    ctx.lineTo(x + s*0.4, y - s*0.25);
+    ctx.lineTo(x + s*0.4, y + s*0.1);
+    ctx.lineTo(x + s*0.25, y + s*0.25);
+    ctx.lineTo(x - s*0.25, y + s*0.25);
+    ctx.lineTo(x - s*0.4, y + s*0.1);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = COLORS.bg;
+    ctx.beginPath();
+    ctx.arc(x - s*0.15, y, s*0.08, 0, Math.PI * 2);
+    ctx.arc(x + s*0.15, y, s*0.08, 0, Math.PI * 2);
+    ctx.fill();
+  } else if (type === 'web') {
+    // Globe
+    ctx.beginPath();
+    ctx.arc(x, y, s*0.4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = COLORS.bg;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(x - s*0.4, y);
+    ctx.lineTo(x + s*0.4, y);
+    ctx.moveTo(x, y - s*0.4);
+    ctx.lineTo(x, y + s*0.4);
+    ctx.stroke();
+  } else if (type === 'lightning') {
+    // Lightning bolt
+    ctx.beginPath();
+    ctx.moveTo(x + s*0.1, y - s*0.5);
+    ctx.lineTo(x - s*0.15, y);
+    ctx.lineTo(x + s*0.05, y);
+    ctx.lineTo(x - s*0.2, y + s*0.5);
+    ctx.lineTo(x + s*0.15, y);
+    ctx.lineTo(x - s*0.05, y);
+    ctx.closePath();
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
+// Particle system for backgrounds
+const particles = [];
+for (let i = 0; i < 50; i++) {
+  particles.push({
+    x: Math.random() * W,
+    y: Math.random() * H,
+    size: Math.random() * 3 + 1,
+    speed: Math.random() * 0.5 + 0.1,
+    alpha: Math.random() * 0.3 + 0.1
+  });
+}
+
+function drawParticles() {
+  particles.forEach(p => {
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(99, 102, 241, ${p.alpha})`;
+    ctx.fill();
+    p.y -= p.speed;
+    if (p.y < -10) { p.y = H + 10; p.x = Math.random() * W; }
+  });
+}
+
+// Gradient background with subtle animation
+function drawBackground(progress = 0) {
+  const gradient = ctx.createRadialGradient(W/2, H/2, 0, W/2, H/2, W);
+  gradient.addColorStop(0, '#16161f');
+  gradient.addColorStop(1, '#0a0a0f');
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, W, H);
+  
+  // Subtle grid pattern
+  ctx.strokeStyle = 'rgba(99, 102, 241, 0.03)';
+  ctx.lineWidth = 1;
+  const gridSize = 60;
+  const offset = (frame * 0.5) % gridSize;
+  for (let x = -gridSize + offset; x < W + gridSize; x += gridSize) {
+    ctx.beginPath();
+    ctx.moveTo(x, 0);
+    ctx.lineTo(x, H);
+    ctx.stroke();
+  }
+  for (let y = -gridSize + offset; y < H + gridSize; y += gridSize) {
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    ctx.lineTo(W, y);
+    ctx.stroke();
+  }
+  
+  drawParticles();
+}
+
+// Scene 1: Intro (0-90)
+function drawScene1() {
+  const t = frame;
+  
+  // Wave animation background
+  if (t < 90) {
+    const progress = Math.min(t / 30, 1);
+    const alpha = easeOutCubic(progress);
+    
+    // Animated waves
+    ctx.save();
+    ctx.globalAlpha = alpha * 0.3;
+    for (let i = 0; i < 3; i++) {
+      const waveY = H/2 + Math.sin((t + i * 20) * 0.05) * 50;
+      const gradient = ctx.createLinearGradient(0, waveY - 100, 0, waveY + 100);
+      gradient.addColorStop(0, 'transparent');
+      gradient.addColorStop(0.5, `rgba(99, 102, 241, ${0.2 - i * 0.05})`);
+      gradient.addColorStop(1, 'transparent');
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, waveY - 100, W, 200);
+    }
+    ctx.restore();
+    
+    // Main greeting
+    if (t < 60) {
+      const p = easeOutBack(Math.min(t / 25, 1));
+      const scale = p;
+      ctx.save();
+      ctx.translate(W/2, H/2 - 40);
+      ctx.scale(scale, scale);
+      ctx.translate(-W/2, -(H/2 - 40));
+      
+      drawText('Hi there! 👋', W/2, H/2 - 40, { size: 100, shadow: true });
+      ctx.restore();
+    }
+    
+    // Name appears after greeting
+    if (t > 30 && t < 90) {
+      const p = easeOutCubic(Math.min((t - 30) / 25, 1));
+      ctx.globalAlpha = p;
+      drawText("I'm Neil", W/2, H/2 + 50, { size: 56, color: COLORS.gray });
+      ctx.globalAlpha = 1;
+    }
+  }
+}
+
+// Scene 2: Services (90-210)
+function drawScene2() {
+  const t = frame - 90;
+  
+  if (t >= 0 && t < 120) {
+    // Title
+    const titleAlpha = easeOutCubic(Math.min(t / 20, 1));
+    ctx.globalAlpha = titleAlpha;
+    drawText('What I build for you:', W/2, 180, { size: 36, color: COLORS.gray });
+    ctx.globalAlpha = 1;
+    
+    // Three service cards with staggered animation
+    const services = [
+      { icon: 'bot', title: 'RAG Chatbot', subtitle: 'Custom AI for your business', x: W/2 - 350 },
+      { icon: 'discord', title: 'Discord Bot', subtitle: 'Automation & engagement', x: W/2 },
+      { icon: 'web', title: 'Website', subtitle: 'Clean, professional sites', x: W/2 + 350 }
+    ];
+    
+    services.forEach((svc, i) => {
+      const delay = i * 25;
+      if (t >= delay && t < delay + 80) {
+        const p = easeOutBack(Math.min((t - delay) / 30, 1));
+        const y = 400 + (1 - p) * 100;
+        
+        // Card background
+        ctx.save();
+        ctx.globalAlpha = p * 0.9;
+        
+        // Glow effect
+        ctx.shadowColor = COLORS.primary;
+        ctx.shadowBlur = 30;
+        
+        drawRoundedRect(svc.x - 180, y - 120, 360, 240, 20, 'rgba(30, 30, 46, 0.8)', 'rgba(99, 102, 241, 0.3)');
+        ctx.shadowBlur = 0;
+        
+        // Icon
+        drawIcon(svc.icon, svc.x, y - 40, 40, COLORS.primary);
+        
+        // Title
+        drawText(svc.title, svc.x, y + 30, { size: 32, color: COLORS.white });
+        
+        // Subtitle
+        drawText(svc.subtitle, svc.x, y + 70, { size: 20, color: COLORS.gray });
+        
+        ctx.restore();
+      }
+    });
+  }
+}
+
+// Scene 3: Value (210-330)
+function drawScene3() {
+  const t = frame - 210;
+  
+  if (t >= 0 && t < 120) {
+    const p = easeOutCubic(Math.min(t / 25, 1));
+    
+    // Animated highlight box
+    const boxW = 900;
+    const boxH = 180;
+    
+    ctx.save();
+    ctx.globalAlpha = p * 0.15;
+    drawRoundedRect(W/2 - boxW/2, H/2 - boxH/2, boxW, boxH, 16, COLORS.primary, 'transparent');
+    ctx.restore();
+    
+    // Lightning icon
+    const iconPulse = 1 + Math.sin(t * 0.1) * 0.1;
+    ctx.save();
+    ctx.translate(W/2, H/2 - 60);
+    ctx.scale(iconPulse, iconPulse);
+    ctx.translate(-W/2, -(H/2 - 60));
+    drawIcon('lightning', W/2, H/2 - 60, 35, COLORS.gold);
+    ctx.restore();
+    
+    // Main text
+    ctx.globalAlpha = p;
+    drawText('Fast & high-quality results', W/2, H/2, { size: 52, color: COLORS.white });
+    
+    // Sub text with delay
+    if (t > 30) {
+      const subP = easeOutCubic(Math.min((t - 30) / 20, 1));
+      ctx.globalAlpha = subP;
+      drawText('that actually move the needle', W/2, H/2 + 60, { size: 36, color: COLORS.gray });
+    }
+    ctx.globalAlpha = 1;
+  }
+}
+
+// Scene 4: CTA (330-480)
+function drawScene4() {
+  const t = frame - 330;
+  
+  if (t >= 0 && t < 150) {
+    // Big question
+    const p1 = easeOutCubic(Math.min(t / 25, 1));
+    ctx.globalAlpha = p1;
+    drawText("Ready to turn your idea into reality?", W/2, H/2 - 60, { size: 48, color: COLORS.white });
+    ctx.globalAlpha = 1;
+    
+    // Subtitle
+    if (t > 30) {
+      const p2 = easeOutCubic(Math.min((t - 30) / 20, 1));
+      ctx.globalAlpha = p2;
+      drawText("Let's make it happen together", W/2, H/2 + 10, { size: 32, color: COLORS.gray });
+      ctx.globalAlpha = 1;
+    }
+    
+    // CTA Button
+    if (t > 60) {
+      const p3 = easeOutBack(Math.min((t - 60) / 25, 1));
+      const btnW = 500;
+      const btnH = 70;
+      const btnX = W/2 - btnW/2;
+      const btnY = H/2 + 100;
+      
+      ctx.save();
+      ctx.globalAlpha = p3;
+      
+      // Button glow
+      ctx.shadowColor = COLORS.primary;
+      ctx.shadowBlur = 25;
+      
+      // Button background
+      drawRoundedRect(btnX, btnY, btnW, btnH, 12, COLORS.primary, 'transparent');
+      ctx.shadowBlur = 0;
+      
+      // Button text
+      drawText("Send me a message", W/2, btnY + btnH/2, { size: 28, color: COLORS.white });
+      
+      ctx.restore();
+      
+      // "I reply fast!" appears
+      if (t > 100) {
+        const p4 = easeOutCubic(Math.min((t - 100) / 15, 1));
+        ctx.globalAlpha = p4;
+        drawText("I reply fast! ⚡", W/2, btnY + btnH + 40, { size: 24, color: COLORS.gold });
+        ctx.globalAlpha = 1;
+      }
+    }
+  }
+}
+
+// Scene 5: Close (480-600)
+function drawScene5() {
+  const t = frame - 480;
+  
+  if (t >= 0 && t < 120) {
+    // Animated gradient background
+    const gradient = ctx.createRadialGradient(W/2, H/2, 0, W/2, H/2, 500);
+    gradient.addColorStop(0, 'rgba(99, 102, 241, 0.2)');
+    gradient.addColorStop(1, 'transparent');
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, W, H);
+    
+    // Main message
+    const p1 = easeOutCubic(Math.min(t / 25, 1));
+    ctx.globalAlpha = p1;
+    drawText("Looking forward to working with you! 🚀", W/2, H/2 - 20, { size: 44, color: COLORS.white });
+    ctx.globalAlpha = 1;
+    
+    // Username with glow
+    if (t > 40) {
+      const p2 = easeOutBack(Math.min((t - 40) / 25, 1));
+      
+      ctx.save();
+      ctx.globalAlpha = p2;
+      ctx.shadowColor = COLORS.primary;
+      ctx.shadowBlur = 20;
+      
+      drawText("@neilwilliam", W/2, H/2 + 60, { size: 56, color: COLORS.accent });
+      
+      ctx.restore();
+    }
+    
+    // Final sparkle effects
+    if (t > 80) {
+      for (let i = 0; i < 5; i++) {
+        const sparkleX = W/2 + Math.cos(t * 0.1 + i * 1.5) * 200;
+        const sparkleY = H/2 + Math.sin(t * 0.1 + i * 1.5) * 100;
+        const sparkleSize = 3 + Math.sin(t * 0.2 + i) * 2;
+        
+        ctx.beginPath();
+        ctx.arc(sparkleX, sparkleY, sparkleSize, 0, Math.PI * 2);
+        ctx.fillStyle = COLORS.gold;
+        ctx.fill();
+      }
+    }
+  }
+}
+
+// Main render loop
+function render() {
+  // Clear
+  ctx.clearRect(0, 0, W, H);
+  
+  // Background (always)
+  drawBackground();
+  
+  // Scenes
+  if (frame < 90) {
+    drawScene1();
+  } else if (frame < 210) {
+    drawScene2();
+  } else if (frame < 330) {
+    drawScene3();
+  } else if (frame < 480) {
+    drawScene4();
+  } else {
+    drawScene5();
+  }
+  
+  // Progress bar at bottom (optional, for debugging)
+  // ctx.fillStyle = COLORS.primary;
+  // ctx.fillRect(0, H - 5, (frame / 600) * W, 5);
+  
+  frame++;
+  
+  if (frame <= 600) {
+    requestAnimationFrame(render);
+  } else {
+    document.getElementById('loader').textContent = 'Done! Recording...';
+  }
+}
+
+// Start
+document.getElementById('loader').textContent = 'Rendering...';
+render();
+
+// Expose frame count for recording
+window.getFrame = () => frame;
+window.canvas = canvas;
+</script>
+</body>
+</html>

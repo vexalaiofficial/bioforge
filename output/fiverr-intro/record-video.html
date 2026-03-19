@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Fiverr Promo - 30s</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap');
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: #000; overflow: hidden; font-family: 'Inter', sans-serif; }
+#status { position: fixed; top: 20px; left: 20px; color: #6366f1; font-size: 18px; z-index: 1000; background: rgba(0,0,0,0.8); padding: 10px 20px; border-radius: 8px; }
+#canvas { width: 1920px; height: 1080px; }
+</style>
+</head>
+<body>
+<div id="status">Initializing...</div>
+<canvas id="canvas" width="1920" height="1080"></canvas>
+
+<script>
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+const W = 1920, H = 1080;
+const COLORS = { bg: '#0a0a0f', primary: '#6366f1', accent: '#818cf8', white: '#ffffff', gray: '#9ca3af', gold: '#fbbf24' };
+let frame = 0;
+const easeOutCubic = t => 1 - Math.pow(1 - t, 3);
+const easeInOutCubic = t => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+const easeOutBack = t => 1 + 2.70158 * Math.pow(t - 1, 3) + 1.70158 * Math.pow(t - 1, 2);
+const easeOutElastic = t => t === 0 || t === 1 ? t : -Math.pow(2, 10 * t - 10) * Math.sin((t * 10 - 10.75) * (2 * Math.PI) / 3);
+
+function drawText(text, x, y, opts = {}) {
+  const { size = 48, color = COLORS.white, align = 'center', alpha = 1 } = opts;
+  ctx.save(); ctx.globalAlpha = alpha; ctx.font = `bold ${size}px Inter`; ctx.textAlign = align; ctx.textBaseline = 'middle';
+  ctx.shadowColor = 'rgba(0,0,0,0.6)'; ctx.shadowBlur = 25; ctx.shadowOffsetY = 8;
+  ctx.fillStyle = color; ctx.fillText(text, x, y); ctx.restore();
+}
+
+function drawRoundedRect(x, y, w, h, r, fill, stroke) {
+  ctx.beginPath(); ctx.roundRect(x, y, w, h, r);
+  if (fill) { ctx.fillStyle = fill; ctx.fill(); }
+  if (stroke) { ctx.strokeStyle = stroke; ctx.stroke(); }
+}
+
+// Icon drawing functions
+function drawBotIcon(x, y, size, color) {
+  ctx.save(); ctx.fillStyle = color;
+  ctx.beginPath(); ctx.arc(x, y - size*0.2, size*0.35, 0, Math.PI*2); ctx.fill();
+  ctx.fillRect(x - size*0.3, y, size*0.6, size*0.5);
+  ctx.fillStyle = COLORS.bg;
+  ctx.beginPath(); ctx.arc(x - size*0.12, y - size*0.15, size*0.08, 0, Math.PI*2); 
+  ctx.arc(x + size*0.12, y - size*0.15, size*0.08, 0, Math.PI*2); ctx.fill();
+  ctx.restore();
+}
+
+function drawDiscordIcon(x, y, size, color) {
+  ctx.save(); ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.moveTo(x - size*0.4, y - size*0.25); ctx.lineTo(x - size*0.25, y - size*0.4); ctx.lineTo(x + size*0.25, y - size*0.4);
+  ctx.lineTo(x + size*0.4, y - size*0.25); ctx.lineTo(x + size*0.4, y + size*0.1); ctx.lineTo(x + size*0.25, y + size*0.25);
+  ctx.lineTo(x - size*0.25, y + size*0.25); ctx.lineTo(x - size*0.4, y + size*0.1); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = COLORS.bg;
+  ctx.beginPath(); ctx.arc(x - size*0.15, y, size*0.08, 0, Math.PI*2); ctx.arc(x + size*0.15, y, size*0.08, 0, Math.PI*2); ctx.fill();
+  ctx.restore();
+}
+
+function drawWebIcon(x, y, size, color) {
+  ctx.save(); ctx.fillStyle = color;
+  ctx.beginPath(); ctx.arc(x, y, size*0.4, 0, Math.PI*2); ctx.fill();
+  ctx.strokeStyle = COLORS.bg; ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.moveTo(x - size*0.4, y); ctx.lineTo(x + size*0.4, y); ctx.moveTo(x, y - size*0.4); ctx.lineTo(x, y + size*0.4); ctx.stroke();
+  ctx.restore();
+}
+
+function drawLightningIcon(x, y, size, color) {
+  ctx.save(); ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.moveTo(x + size*0.1, y - size*0.5); ctx.lineTo(x - size*0.15, y); ctx.lineTo(x + size*0.05, y);
+  ctx.lineTo(x - size*0.2, y + size*0.5); ctx.lineTo(x + size*0.15, y); ctx.lineTo(x - size*0.05, y); ctx.closePath(); ctx.fill();
+  ctx.restore();
+}
+
+// Animated background
+const particles = [];
+for (let i = 0; i < 60; i++) { particles.push({ x: Math.random() * W, y: Math.random() * H, size: Math.random() * 2 + 1, speed: Math.random() * 0.4 + 0.1, alpha: Math.random() * 0.25 + 0.05 }); }
+
+function drawBackground() {
+  // Gradient
+  const grad = ctx.createRadialGradient(W/2, H/2, 0, W/2, H/2, W);
+  grad.addColorStop(0, '#16161f'); grad.addColorStop(1, '#0a0a0f');
+  ctx.fillStyle = grad; ctx.fillRect(0, 0, W, H);
+  
+  // Grid
+  ctx.strokeStyle = 'rgba(99, 102, 241, 0.04)'; ctx.lineWidth = 1;
+  const gridSize = 80, offset = (frame * 0.3) % gridSize;
+  for (let x = -gridSize + offset; x < W + gridSize; x += gridSize) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke(); }
+  for (let y = -gridSize + offset; y < H + gridSize; y += gridSize) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
+  
+  // Particles
+  particles.forEach(p => {
+    ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI*2);
+    ctx.fillStyle = `rgba(99, 102, 241, ${p.alpha})`; ctx.fill();
+    p.y -= p.speed; if (p.y < -10) { p.y = H + 10; p.x = Math.random() * W; }
+  });
+}
+
+// ============ SCENES ============
+
+// Scene 1: Intro (0-90) - 3s
+function drawScene1() {
+  const t = frame;
+  if (t < 90) {
+    // Background pulse
+    ctx.save();
+    const pulse = 1 + Math.sin(t * 0.05) * 0.05;
+    ctx.globalAlpha = 0.15 * easeOutCubic(Math.min(t/30, 1));
+    const grad = ctx.createRadialGradient(W/2, H/2, 0, W/2, H/2, 400 * pulse);
+    grad.addColorStop(0, COLORS.primary); grad.addColorStop(1, 'transparent');
+    ctx.fillStyle = grad; ctx.fillRect(0, 0, W, H);
+    ctx.restore();
+    
+    // Greeting
+    if (t < 60) {
+      const p = easeOutBack(Math.min(t / 25, 1));
+      ctx.save(); ctx.translate(W/2, H/2 - 30); ctx.scale(p, p); ctx.translate(-W/2, -(H/2 - 30));
+      drawText('Hi there! 👋', W/2, H/2 - 30, { size: 110 });
+      ctx.restore();
+    }
+    // Name
+    if (t > 25 && t < 90) {
+      const p = easeOutCubic(Math.min((t - 25) / 25, 1));
+      ctx.globalAlpha = p;
+      drawText("I'm Neil", W/2, H/2 + 60, { size: 58, color: COLORS.gray });
+      ctx.globalAlpha = 1;
+    }
+  }
+}
+
+// Scene 2: Services (90-270) - 6s
+function drawScene2() {
+  const t = frame - 90;
+  if (t >= 0 && t < 180) {
+    // Header
+    const headerAlpha = easeOutCubic(Math.min(t / 20, 1));
+    ctx.globalAlpha = headerAlpha;
+    drawText('WHAT I BUILD', W/2, 150, { size: 28, color: COLORS.primary, letterSpacing: '4px' });
+    ctx.globalAlpha = 1;
+    
+    // Service cards
+    const services = [
+      { icon: drawBotIcon, title: 'RAG Chatbot', subtitle: 'AI-powered custom assistant for your business', x: W/2 - 380 },
+      { icon: drawDiscordIcon, title: 'Discord Bot', subtitle: 'Automation, moderation & engagement', x: W/2 },
+      { icon: drawWebIcon, title: 'Website', subtitle: 'Clean, modern, professional sites', x: W/2 + 380 }
+    ];
+    
+    services.forEach((svc, i) => {
+      const delay = i * 35;
+      if (t >= delay && t < delay + 120) {
+        const p = easeOutBack(Math.min((t - delay) / 35, 1));
+        const y = 400 + (1 - p) * 80;
+        
+        ctx.save();
+        ctx.globalAlpha = p;
+        
+        // Card glow
+        ctx.shadowColor = COLORS.primary;
+        ctx.shadowBlur = 30;
+        
+        // Card
+        drawRoundedRect(svc.x - 200, y - 140, 400, 280, 24, 'rgba(20, 20, 32, 0.9)', 'rgba(99, 102, 241, 0.25)');
+        ctx.shadowBlur = 0;
+        
+        // Icon
+        svc.icon(svc.x, y - 50, 45, COLORS.primary);
+        
+        // Title
+        drawText(svc.title, svc.x, y + 20, { size: 34 });
+        
+        // Subtitle
+        drawText(svc.subtitle, svc.x, y + 70, { size: 20, color: COLORS.gray });
+        
+        ctx.restore();
+      }
+    });
+  }
+}
+
+// Scene 3: Value Prop (270-420) - 5s
+function drawScene3() {
+  const t = frame - 270;
+  if (t >= 0 && t < 150) {
+    // Highlight box
+    const p1 = easeOutCubic(Math.min(t / 25, 1));
+    ctx.save();
+    ctx.globalAlpha = p1 * 0.12;
+    drawRoundedRect(W/2 - 500, H/2 - 120, 1000, 240, 20, COLORS.primary, 'transparent');
+    ctx.restore();
+    
+    // Lightning
+    const pulse = 1 + Math.sin(t * 0.15) * 0.15;
+    ctx.save();
+    ctx.translate(W/2, H/2 - 50);
+    ctx.scale(pulse, pulse);
+    ctx.translate(-W/2, -(H/2 - 50));
+    drawLightningIcon(W/2, H/2 - 50, 38, COLORS.gold);
+    ctx.restore();
+    
+    // Main text
+    ctx.globalAlpha = p1;
+    drawText('Fast & high-quality results', W/2, H/2 + 20, { size: 56 });
+    
+    // Sub text
+    if (t > 35) {
+      const p2 = easeOutCubic(Math.min((t - 35) / 20, 1));
+      ctx.globalAlpha = p2;
+      drawText('that actually move the needle', W/2, H/2 + 85, { size: 36, color: COLORS.gray });
+    }
+    ctx.globalAlpha = 1;
+  }
+}
+
+// Scene 4: Promise (420-570) - 5s
+function drawScene4() {
+  const t = frame - 420;
+  if (t >= 0 && t < 150) {
+    // Promise 1
+    const p1 = easeOutCubic(Math.min(t / 25, 1));
+    ctx.globalAlpha = p1;
+    drawText('I deliver on time', W/2, H/2 - 50, { size: 48 });
+    
+    // Promise 2
+    if (t > 30) {
+      const p2 = easeOutCubic(Math.min((t - 30) / 25, 1));
+      ctx.globalAlpha = p2;
+      drawText('Clean, maintainable code', W/2, H/2 + 20, { size: 48 });
+    }
+    
+    // Promise 3
+    if (t > 60) {
+      const p3 = easeOutCubic(Math.min((t - 60) / 25, 1));
+      ctx.globalAlpha = p3;
+      drawText('Ongoing support', W/2, H/2 + 90, { size: 48, color: COLORS.primary });
+    }
+    ctx.globalAlpha = 1;
+  }
+}
+
+// Scene 5: CTA (570-780) - 7s
+function drawScene5() {
+  const t = frame - 570;
+  if (t >= 0 && t < 210) {
+    // Main question
+    const p1 = easeOutCubic(Math.min(t / 25, 1));
+    ctx.globalAlpha = p1;
+    drawText("Ready to turn your idea into reality?", W/2, H/2 - 80, { size: 50 });
+    ctx.globalAlpha = 1;
+    
+    // Subtitle
+    if (t > 35) {
+      const p2 = easeOutCubic(Math.min((t - 35) / 20, 1));
+      ctx.globalAlpha = p2;
+      drawText("Let's make it happen together", W/2, H/2 - 20, { size: 32, color: COLORS.gray });
+    }
+    
+    // CTA Button
+    if (t > 70) {
+      const p3 = easeOutBack(Math.min((t - 70) / 30, 1));
+      const btnW = 560, btnH = 80;
+      const btnX = W/2 - btnW/2, btnY = H/2 + 60;
+      
+      ctx.save();
+      ctx.globalAlpha = p3;
+      ctx.shadowColor = COLORS.primary;
+      ctx.shadowBlur = 35;
+      drawRoundedRect(btnX, btnY, btnW, btnH, 16, COLORS.primary, 'transparent');
+      ctx.shadowBlur = 0;
+      drawText("Send me a message", W/2, btnY + btnH/2, { size: 30, color: COLORS.white });
+      ctx.restore();
+      
+      // Fast reply badge
+      if (t > 120) {
+        const p4 = easeOutCubic(Math.min((t - 120) / 20, 1));
+        ctx.globalAlpha = p4;
+        drawText("⚡ I reply within 24 hours!", W/2, btnY + btnH + 45, { size: 24, color: COLORS.gold });
+        ctx.globalAlpha = 1;
+      }
+    }
+  }
+}
+
+// Scene 6: Close (780-900) - 4s
+function drawScene6() {
+  const t = frame - 780;
+  if (t >= 0 && t < 120) {
+    // Radial glow
+    const grad = ctx.createRadialGradient(W/2, H/2, 0, W/2, H/2, 600);
+    grad.addColorStop(0, 'rgba(99, 102, 241, 0.25)'); grad.addColorStop(1, 'transparent');
+    ctx.fillStyle = grad; ctx.fillRect(0, 0, W, H);
+    
+    // Main message
+    const p1 = easeOutCubic(Math.min(t / 25, 1));
+    ctx.globalAlpha = p1;
+    drawText("Looking forward to working with you!", W/2, H/2 - 30, { size: 46 });
+    ctx.globalAlpha = 1;
+    
+    // Username
+    if (t > 35) {
+      const p2 = easeOutBack(Math.min((t - 35) / 30, 1));
+      ctx.save();
+      ctx.globalAlpha = p2;
+      ctx.shadowColor = COLORS.primary;
+      ctx.shadowBlur = 25;
+      drawText("@neilwilliam", W/2, H/2 + 50, { size: 60, color: COLORS.accent });
+      ctx.restore();
+    }
+    
+    // Sparkles
+    if (t > 70) {
+      for (let i = 0; i < 8; i++) {
+        const angle = (t * 0.08) + (i * Math.PI / 4);
+        const sparkleX = W/2 + Math.cos(angle) * 180;
+        const sparkleY = H/2 + Math.sin(angle * 2) * 80;
+        ctx.beginPath();
+        ctx.arc(sparkleX, sparkleY, 2 + Math.sin(t * 0.2 + i) * 1.5, 0, Math.PI * 2);
+        ctx.fillStyle = COLORS.gold; ctx.fill();
+      }
+    }
+  }
+}
+
+function render() {
+  ctx.clearRect(0, 0, W, H);
+  drawBackground();
+  
+  if (frame < 90) drawScene1();
+  else if (frame < 270) drawScene2();
+  else if (frame < 420) drawScene3();
+  else if (frame < 570) drawScene4();
+  else if (frame < 780) drawScene5();
+  else drawScene6();
+  
+  frame++;
+  document.getElementById('status').textContent = `Frame ${frame} / 900`;
+  if (frame <= 900) { requestAnimationFrame(render); }
+  else { document.getElementById('status').textContent = 'Done!'; window.finishCallback(); }
+}
+
+window.finishCallback = null;
+render();
+</script>
+</body>
+</html>

@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "skills": {
+    "command-center": {
+      "version": "1.4.1",
+      "installedAt": 1773736154955
+    },
+    "video-frames": {
+      "version": "1.0.0",
+      "installedAt": 1773844682836
+    },
+    "weather": {
+      "version": "1.0.0",
+      "installedAt": 1773844692231
+    }
+  }
+}

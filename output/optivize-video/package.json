@@ -1,0 +1,16 @@
+{
+  "name": "optivize-video",
+  "version": "1.0.0",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "remotion studio src/index.js --port 3000",
+    "dev": "remotion studio src/index.js --port 3000",
+    "build": "remotion bundle src/index.js",
+    "render": "remotion render src/index.js"
+  },
+  "dependencies": {
+    "@remotion/cli": "^4.0.0",
+    "lucide-react": "^0.400.0",
+    "remotion": "^4.0.0"
+  }
+}
